@@ -46,6 +46,7 @@ import org.jboss.pnc.rest.utils.EndpointAuthenticationProvider;
 import org.jboss.pnc.rest.validation.exceptions.InvalidEntityException;
 import org.jboss.pnc.rest.validation.exceptions.RestValidationException;
 import org.jboss.pnc.spi.BuildOptions;
+import org.jboss.pnc.spi.BuildOverrides;
 import org.jboss.pnc.spi.exception.BuildConflictException;
 import org.jboss.pnc.spi.exception.CoreException;
 import org.slf4j.Logger;
@@ -73,6 +74,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.jboss.pnc.rest.configuration.SwaggerConstants.CONFLICTED_CODE;
 import static org.jboss.pnc.rest.configuration.SwaggerConstants.CONFLICTED_DESCRIPTION;
@@ -262,6 +264,40 @@ public class BuildConfigurationEndpoint extends AbstractEndpoint<BuildConfigurat
             @ApiParam(value = "Should we keep the build container running, if the build fails?") @QueryParam("keepPodOnFailure") @DefaultValue("false") boolean keepPodOnFailure,
             @ApiParam(value = "Should we add a timestamp during the alignment? Valid only for temporary builds.") @QueryParam("timestampAlignment") @DefaultValue("false") boolean timestampAlignment,
             @Context UriInfo uriInfo) throws InvalidEntityException, MalformedURLException, BuildConflictException, CoreException {
+        return triggerBuild(id, callbackUrl, temporaryBuild, forceRebuild, buildDependencies, keepPodOnFailure, timestampAlignment, uriInfo, Optional.empty());
+    }
+
+    @ApiOperation(value = "Triggers the build of a specific Build Configuration with an option to override some values in Build Configuration.")
+    @ApiResponses(value = {
+            @ApiResponse(code = SUCCESS_CODE, message = SUCCESS_DESCRIPTION, response = BuildRecordSingleton.class),
+            @ApiResponse(code = CONFLICTED_CODE, message = CONFLICTED_DESCRIPTION, response = ErrorResponseRest.class),
+            @ApiResponse(code = INVALID_CODE, message = INVALID_DESCRIPTION, response = ErrorResponseRest.class),
+            @ApiResponse(code = SERVER_ERROR_CODE, message = SERVER_ERROR_DESCRIPTION, response = ErrorResponseRest.class)
+    })
+    @POST
+    @Path("/{id}/build-with-overrides")
+    public Response triggerWithOverrides(@ApiParam(value = "Build Configuration id", required = true) @PathParam("id") Integer id,
+                            @ApiParam(value = "Optional Callback URL") @QueryParam("callbackUrl") String callbackUrl,
+                            @ApiParam(value = "Is it a temporary build or a standard build?") @QueryParam("temporaryBuild") @DefaultValue("false") boolean temporaryBuild,
+                            @ApiParam(value = "Should we force the rebuild?") @QueryParam("forceRebuild") @DefaultValue("false") boolean forceRebuild,
+                            @ApiParam(value = "Should we build also dependencies of this BuildConfiguration?") @QueryParam("buildDependencies") @DefaultValue("true") boolean buildDependencies,
+                            @ApiParam(value = "Should we keep the build container running, if the build fails?") @QueryParam("keepPodOnFailure") @DefaultValue("false") boolean keepPodOnFailure,
+                            @ApiParam(value = "Should we add a timestamp during the alignment? Valid only for temporary builds.") @QueryParam("timestampAlignment") @DefaultValue("false") boolean timestampAlignment,
+                            @ApiParam(value = "Optional overrides for values in BuildConfiguration") @QueryParam("buildOverrides") BuildOverrides buildOverrides,
+                            @Context UriInfo uriInfo) throws InvalidEntityException, MalformedURLException, BuildConflictException, CoreException {
+        return triggerBuild(id, callbackUrl, temporaryBuild, forceRebuild, buildDependencies, keepPodOnFailure, timestampAlignment, uriInfo, Optional.of(buildOverrides));
+    }
+
+    private Response triggerBuild(Integer id,
+                                  String callbackUrl,
+                                  boolean temporaryBuild,
+                                  boolean forceRebuild,
+                                  boolean buildDependencies,
+                                  boolean keepPodOnFailure,
+                                  boolean timestampAlignment,
+                                  UriInfo uriInfo,
+                                  Optional<BuildOverrides> buildOverrides)
+            throws InvalidEntityException, BuildConflictException, CoreException, MalformedURLException {
         logger.debug("Endpoint /build requested for buildConfigurationId [{}] temporaryBuild: {}, forceRebuild: {}, " +
                         "buildDependencies: {}, keepPodOnFailure: {}, timestampAlignment: {}",
                 id, temporaryBuild, forceRebuild, buildDependencies, keepPodOnFailure, timestampAlignment);
@@ -275,10 +311,10 @@ public class BuildConfigurationEndpoint extends AbstractEndpoint<BuildConfigurat
         // if callbackUrl is provided trigger build accordingly
         if (callbackUrl != null && !callbackUrl.isEmpty()) {
             logger.debug("Triggering build for buildConfigurationId {} with callback URL {}.", id, callbackUrl);
-            runningBuildId = buildTriggerer.triggerBuild(id, currentUser, buildOptions, new URL(callbackUrl));
+            runningBuildId = buildTriggerer.triggerBuild(id, currentUser, buildOptions, buildOverrides, new URL(callbackUrl));
         } else {
             logger.debug("Triggering build for buildConfigurationId {} without callback URL.", id);
-            runningBuildId = buildTriggerer.triggerBuild(id, currentUser, buildOptions);
+            runningBuildId = buildTriggerer.triggerBuild(id, currentUser, buildOptions, buildOverrides);
         }
 
         UriBuilder uriBuilder = UriBuilder.fromUri(uriInfo.getBaseUri()).path("/build-config-set-records/{id}");

@@ -25,12 +25,14 @@ import org.jboss.pnc.coordinator.notifications.buildSetTask.BuildSetCallBack;
 import org.jboss.pnc.coordinator.notifications.buildSetTask.BuildSetStatusNotifications;
 import org.jboss.pnc.coordinator.notifications.buildTask.BuildCallBack;
 import org.jboss.pnc.coordinator.notifications.buildTask.BuildStatusNotifications;
+import org.jboss.pnc.model.BuildConfigSetRecord;
 import org.jboss.pnc.model.BuildConfiguration;
 import org.jboss.pnc.model.BuildConfigurationSet;
 import org.jboss.pnc.model.User;
 import org.jboss.pnc.rest.utils.BpmNotifier;
 import org.jboss.pnc.rest.utils.HibernateLazyInitializer;
 import org.jboss.pnc.spi.BuildOptions;
+import org.jboss.pnc.spi.BuildOverrides;
 import org.jboss.pnc.spi.builddriver.exception.BuildDriverException;
 import org.jboss.pnc.spi.coordinator.BuildCoordinator;
 import org.jboss.pnc.spi.coordinator.BuildSetTask;
@@ -98,6 +100,7 @@ public class BuildTriggerer {
     public int triggerBuild(final Integer buildConfigurationId,
                             User currentUser,
                             BuildOptions buildOptions,
+                            Optional<BuildOverrides> buildOverrides,
                             URL callBackUrl)
             throws BuildConflictException, CoreException {
         Consumer<BuildCoordinationStatusChangedEvent> onStatusUpdate = (statusChangedEvent) -> {
@@ -107,7 +110,7 @@ public class BuildTriggerer {
             }
         };
 
-        BuildConfigurationSetTriggerResult result = doTriggerBuild(buildConfigurationId, currentUser, buildOptions);
+        BuildConfigurationSetTriggerResult result = doTriggerBuild(buildConfigurationId, currentUser, buildOptions, buildOverrides);
         result.getBuildTasks().forEach(t -> buildStatusNotifications.subscribe(new BuildCallBack(t.getId(), onStatusUpdate)));
         return selectBuildRecordIdOf(result.getBuildTasks(), buildConfigurationId);
     }
@@ -120,24 +123,36 @@ public class BuildTriggerer {
                 .orElseThrow(() -> new CoreException("No build id for the triggered configuration"));
     }
 
-    public int triggerBuild(final Integer configurationId, User currentUser, BuildOptions buildOptions)
+    public int triggerBuild(final Integer configurationId,
+                            User currentUser,
+                            BuildOptions buildOptions,
+                            Optional<BuildOverrides> buildOverrides)
             throws BuildConflictException, CoreException {
         BuildConfigurationSetTriggerResult result =
-                doTriggerBuild(configurationId, currentUser, buildOptions);
+                doTriggerBuild(configurationId, currentUser, buildOptions, buildOverrides);
         return selectBuildRecordIdOf(result.getBuildTasks(), configurationId);
     }
 
     private BuildConfigurationSetTriggerResult doTriggerBuild(final Integer configurationId, User currentUser,
-                                                              BuildOptions buildOptions)
+                                                              BuildOptions buildOptions, Optional<BuildOverrides> buildOverrides)
             throws BuildConflictException, CoreException {
-        final BuildConfiguration configuration = buildConfigurationRepository.queryById(configurationId);
-        Preconditions.checkArgument(configuration != null, "Can't find configuration with given id=" + configurationId);
-
         BuildSetTask buildSetTask = buildCoordinator.build(
-                hibernateLazyInitializer.initializeBuildConfigurationBeforeTriggeringIt(configuration),
+                prepareBuildConfiguration(buildOverrides, configurationId),
                 currentUser,
                 buildOptions);
         return BuildConfigurationSetTriggerResult.fromBuildSetTask(buildSetTask);
+    }
+
+    private BuildConfiguration prepareBuildConfiguration(Optional<BuildOverrides> buildOverrides, Integer configurationId) {
+        final BuildConfiguration configuration = buildConfigurationRepository.queryById(configurationId);
+        Preconditions.checkArgument(configuration != null, "Can't find configuration with given id=" + configurationId);
+
+        BuildConfiguration buildConfiguration = hibernateLazyInitializer.initializeBuildConfigurationBeforeTriggeringIt(configuration);
+        if (buildOverrides.isPresent()) {
+            buildConfiguration = buildOverrides.get().overrideBuildConfigurationValues(buildConfiguration);
+        }
+
+        return buildConfiguration;
     }
 
     public boolean cancelBuild(int buildTaskId) throws BuildConflictException, CoreException {
