@@ -946,6 +946,7 @@ public class BuildRecord implements GenericEntity<Integer> {
             return this;
         }
 
+        // !!! BCAudited is stored in the BuildRecord
         public Builder buildConfigurationAudited(BuildConfigurationAudited buildConfigurationAudited) {
             this.buildConfigurationAudited = buildConfigurationAudited;
             return this;

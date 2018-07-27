@@ -111,11 +111,10 @@ public class DefaultBuildCoordinator implements BuildCoordinator {
     }
 
     /**
-     * Run a single build.  Uses the settings from the latest saved/audited build configuration.
+     * Run a single build.  Uses the settings from the build configuration passed as parameter.
      *
-     * @param buildConfiguration The build configuration which will be used.  The latest version of this
-     * build config will be built.
-     * @param user The user who triggered the build.
+     * @param buildConfiguration The build configuration which will be used
+     * @param user The user who triggered the build
      * @param buildOptions Customization of a build specified by user
      *
      * @return The new build task
@@ -127,7 +126,7 @@ public class DefaultBuildCoordinator implements BuildCoordinator {
 
         synchronized (buildMethodLock) {
 
-            if (buildQueue.getUnfinishedTask(buildConfiguration).isPresent()) {
+            if (buildQueue.getUnfinishedTask(buildConfiguration).isPresent()) { // TODO allow multiple parallel builds of a BC, if it's different BC content
                 throw new BuildConflictException("Active build task found using the same configuration BC.id:" + buildConfiguration.getId());
             }
 
@@ -234,8 +233,8 @@ public class DefaultBuildCoordinator implements BuildCoordinator {
     }
 
     private boolean isBuildConfigurationAlreadyInQueue(BuildTask buildTask) {
-        BuildConfigurationAudited buildConfigurationAudited = buildTask.getBuildConfigurationAudited();
-        Optional<BuildTask> unfinishedTask = buildQueue.getUnfinishedTask(buildConfigurationAudited);
+        BuildConfiguration buildConfiguration = buildTask.getBuildConfiguration();
+        Optional<BuildTask> unfinishedTask = buildQueue.getUnfinishedTask(buildConfiguration);
         if (unfinishedTask.isPresent()) {
             log.debug("Task with the same buildConfigurationAudited is in the queue {}.", unfinishedTask.get());
             return true;
@@ -339,9 +338,8 @@ public class DefaultBuildCoordinator implements BuildCoordinator {
                 oldStatus,
                 status,
                 task.getId(),
-                task.getBuildConfigurationAudited().getId(),
-                task.getBuildConfigurationAudited().getRev(),
-                task.getBuildConfigurationAudited().getName(),
+                task.getBuildConfiguration().getId(),
+                task.getBuildConfiguration().getName(),
                 task.getStartTime(),
                 task.getEndTime(),
                 userId);

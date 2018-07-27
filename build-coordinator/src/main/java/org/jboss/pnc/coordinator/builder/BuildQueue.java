@@ -178,13 +178,13 @@ public class BuildQueue {
     /**
      * Get build task for given build configuration from the queue.
      *
-     * @param buildConfigAudited build configuration
+     * @param buildConfiguration build configuration
      * @return Optional.of(build task for the configuration) if build task is enqueued/in progress, Optional.empty() otherwise
      */
-    public synchronized Optional<BuildTask> getTask(BuildConfigurationAudited buildConfigAudited) {
-        Optional<BuildTask> ready = readyTasks.stream().filter(bt -> bt.getBuildConfigurationAudited().equals(buildConfigAudited)).findAny();
-        Optional<BuildTask> waiting = waitingTasksWithCallbacks.keySet().stream().filter(bt -> bt.getBuildConfigurationAudited().equals(buildConfigAudited)).findAny();
-        Optional<BuildTask> inProgress = tasksInProgress.stream().filter(bt -> bt.getBuildConfigurationAudited().equals(buildConfigAudited)).findAny();
+    public synchronized Optional<BuildTask> getTask(BuildConfiguration buildConfiguration) {
+        Optional<BuildTask> ready = readyTasks.stream().filter(bt -> bt.getBuildConfiguration().equals(buildConfiguration)).findAny();
+        Optional<BuildTask> waiting = waitingTasksWithCallbacks.keySet().stream().filter(bt -> bt.getBuildConfiguration().equals(buildConfiguration)).findAny();
+        Optional<BuildTask> inProgress = tasksInProgress.stream().filter(bt -> bt.getBuildConfiguration().equals(buildConfiguration)).findAny();
         return ready.isPresent() ? ready : waiting.isPresent() ? waiting : inProgress;
     }
 
@@ -217,11 +217,8 @@ public class BuildQueue {
     }
 
     public synchronized Optional<BuildTask> getUnfinishedTask(BuildConfiguration buildConfiguration) {
+        // FIXME Equals on ID won't work if we can override BC content !!!!
         return unfinishedTasks.stream().filter(buildTask -> buildTask.getBuildConfiguration().equals(buildConfiguration)).findFirst();
-    }
-
-    public synchronized Optional<BuildTask> getUnfinishedTask(BuildConfigurationAudited buildConfigurationAudited) {
-        return unfinishedTasks.stream().filter(buildTask -> buildTask.getBuildConfigurationAudited().equals(buildConfigurationAudited)).findFirst();
     }
 
     public synchronized Set<BuildTask> getUnfinishedTasks() {

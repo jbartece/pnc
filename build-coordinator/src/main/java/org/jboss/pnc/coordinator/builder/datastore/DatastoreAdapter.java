@@ -268,7 +268,7 @@ public class DatastoreAdapter {
 
         userLog.warn(buildTask.getStatusDescription());
 
-        log.debug("Storing REJECTED build of {} to datastore. Reason: {}", buildTask.getBuildConfigurationAudited().getName(), buildTask.getStatusDescription());
+        log.debug("Storing REJECTED build of {} to datastore. Reason: {}", buildTask.getBuildConfiguration().getName(), buildTask.getStatusDescription());
         datastore.storeCompletedBuild(buildRecordBuilder);
     }
 

@@ -44,7 +44,6 @@ public class BuildTask {
 
     private final Integer id;
     private final BuildConfiguration buildConfiguration; //TODO decouple DB entity
-    private final BuildConfigurationAudited buildConfigurationAudited; //TODO decouple DB entity
 
     @Getter
     private final BuildOptions buildOptions;
@@ -80,7 +79,6 @@ public class BuildTask {
     private final Integer buildConfigSetRecordId;
 
     private BuildTask(BuildConfiguration buildConfiguration,
-                      BuildConfigurationAudited buildConfigurationAudited,
                       BuildOptions buildOptions,
                       User user,
                       Date submitTime,
@@ -92,7 +90,6 @@ public class BuildTask {
 
         this.id = id;
         this.buildConfiguration = buildConfiguration;
-        this.buildConfigurationAudited = buildConfigurationAudited;
         this.buildOptions = buildOptions;
         this.user = user;
         this.submitTime = submitTime;
@@ -146,10 +143,6 @@ public class BuildTask {
         return buildConfiguration;
     }
 
-    public BuildConfigurationAudited getBuildConfigurationAudited() {
-        return buildConfigurationAudited;
-    }
-
     /**
      * Check if this build task has a build configuration dependency on the given build task
      *
@@ -186,12 +179,12 @@ public class BuildTask {
             return false;
         }
         BuildTask buildTask = (BuildTask) o;
-        return buildConfigurationAudited.equals(buildTask.getBuildConfigurationAudited());
+        return buildConfiguration.equals(buildTask.getBuildConfiguration());
     }
 
     @Override
     public int hashCode() {
-        return buildConfigurationAudited.hashCode();
+        return buildConfiguration.hashCode();
     }
 
     public void setStatusDescription(String statusDescription) {
@@ -294,12 +287,12 @@ public class BuildTask {
 
     @Override
     public String toString() {
-        return "Build Task id:" + id + ", name: " + buildConfigurationAudited.getName() + ", project name: " + buildConfigurationAudited.getProject().getName() + ", status: " + status;
+        return "Build Task id:" + id + ", name: " + buildConfiguration.getName() + ", project name: " + buildConfiguration.getProject().getName() + ", status: " + status;
     }
 
     public static BuildTask build(BuildConfiguration buildConfiguration,
-                                  BuildConfigurationAudited buildConfigAudited,
-                                  BuildOptions buildOptions, User user,
+                                  BuildOptions buildOptions,
+                                  User user,
                                   int buildTaskId,
                                   BuildSetTask buildSetTask,
                                   Date submitTime,
@@ -314,7 +307,6 @@ public class BuildTask {
 
         return new BuildTask(
                 buildConfiguration,
-                buildConfigAudited,
                 buildOptions,
                 user,
                 submitTime,

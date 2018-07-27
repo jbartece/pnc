@@ -49,10 +49,12 @@ import org.jboss.pnc.spi.exception.CoreException;
 import org.jboss.pnc.spi.executor.BuildExecutionConfiguration;
 import org.jboss.pnc.spi.repositorymanager.RepositoryManagerResult;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -80,7 +82,7 @@ public class DefaultBuildCoordinatorTest {
     private Event<BuildSetStatusChangedEvent> buildSetStatusChangedEventNotifier;
     @Mock
     private BuildSchedulerFactory buildSchedulerFactory;
-    @Mock
+    @Spy
     private BuildQueue buildQueue;
     @Mock
     private SystemConfig systemConfig;
@@ -90,13 +92,13 @@ public class DefaultBuildCoordinatorTest {
     @InjectMocks
     private DatastoreAdapter datastoreAdapter;
 
-    private BuildCoordinator coordinator;
+    private BuildCoordinator buildCoordinator;
 
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-        coordinator = new DefaultBuildCoordinator(
+        buildCoordinator = new DefaultBuildCoordinator(
                 datastoreAdapter,
                 buildStatusChangedEventNotifier,
                 buildSetStatusChangedEventNotifier,
@@ -121,7 +123,7 @@ public class DefaultBuildCoordinatorTest {
         ArgumentGrabbingAnswer<BuildRecord.Builder> answer = new ArgumentGrabbingAnswer<>(BuildRecord.Builder.class);
         when(datastore.storeCompletedBuild(any(BuildRecord.Builder.class))).thenAnswer(answer);
 
-        coordinator.completeBuild(buildTask, buildResult);
+        buildCoordinator.completeBuild(buildTask, buildResult);
 
         assertThat(answer.arguments).hasSize(1);
         BuildRecord.Builder builder = answer.arguments.iterator().next();
@@ -150,9 +152,45 @@ public class DefaultBuildCoordinatorTest {
 
         BuildOptions buildOptions = new BuildOptions();
 
-        BuildSetTask bsTask = coordinator.build(bcSet, user, buildOptions);
+        BuildSetTask bsTask = buildCoordinator.build(bcSet, user, buildOptions);
         assertThat(bsTask.getBuildConfigSetRecord().get().getStatus())
             .isEqualTo(BuildStatus.REJECTED);
+    }
+
+    @Test
+    @Ignore
+    public void shouldAllowTwoBuildsOfDifferentRevisionsOfBC() throws Exception {
+    }
+
+    @Test
+    @Ignore
+    public void shouldAllowTwoBuildsOfTheSameBCWithOverrides() throws Exception {
+        BuildConfiguration buildConfiguration1 = BuildConfiguration.Builder.newBuilder()
+                .id(1)
+                .scmRevision("tag1")
+                .buildScript("mvn clean deploy -P1")
+                .build();
+
+        BuildConfiguration buildConfiguration2 = BuildConfiguration.Builder.newBuilder()
+                .id(1)
+                .scmRevision("tag22")
+                .buildScript("mvn clean deploy -P22")
+                .build();
+
+
+        User user = User.Builder.newBuilder()
+                .id(1)
+                .username("test-user")
+                .build();
+
+        buildCoordinator.build(buildConfiguration1, user, new BuildOptions());
+        buildCoordinator.build(buildConfiguration2, user, new BuildOptions());
+
+    }
+
+    @Test
+    public void shouldAllowBuildOfACurrentBCAndWithOverrides() throws Exception {
+
     }
 
 

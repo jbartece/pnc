@@ -27,7 +27,6 @@ public interface BuildCoordinationStatusChangedEvent {
     Integer getBuildTaskId();
     Integer getUserId();
     Integer getBuildConfigurationId();
-    Integer getBuildConfigurationRevision();
     String getBuildConfigurationName();
     Date getBuildStartTime();
     Date getBuildEndTime();

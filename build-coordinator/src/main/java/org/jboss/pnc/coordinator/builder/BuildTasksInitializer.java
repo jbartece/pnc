@@ -166,26 +166,23 @@ public class BuildTasksInitializer {
             ProductMilestone productMilestone,
             Set<BuildConfiguration> toBuild,
             Set<BuildTask> alreadySubmittedBuildTasks,
-            BuildOptions buildOptions) { //TODO toBuild should be a set of BuildConfigurationAudited entities
-        for (BuildConfiguration buildConfig : toBuild) {
-            BuildConfigurationAudited buildConfigAudited =
-                    datastoreAdapter.getLatestBuildConfigurationAudited(buildConfig.getId());
+            BuildOptions buildOptions) {
 
-            String buildContentId = ContentIdentityManager.getBuildContentId(buildConfigAudited.getName());
+        for (BuildConfiguration buildConfig : toBuild) {
+            String buildContentId = ContentIdentityManager.getBuildContentId(buildConfig.getName());
             MDCUtils.setMDC(buildContentId, buildOptions.isTemporaryBuild(), temporaryBuildExpireDate);
 
             Optional<BuildTask> taskOptional = alreadySubmittedBuildTasks.stream()
-                    .filter(bt -> bt.getBuildConfigurationAudited().equals(buildConfigAudited))
+                    .filter(bt -> bt.getBuildConfiguration().equals(buildConfig))
                     .findAny();
 
             BuildTask buildTask;
             if (taskOptional.isPresent()) {
                 buildTask = taskOptional.get();
-                log.debug("Linking BuildConfigurationAudited {} to existing task {}.", buildConfigAudited, buildTask);
+                log.debug("Linking BuildConfiguration {} to existing task {}.", buildConfig, buildTask);
             } else {
                 buildTask = BuildTask.build(
                         buildConfig,
-                        buildConfigAudited,
                         buildSetTask.getBuildOptions(),
                         user,
                         buildTaskIdProvider.get(),
@@ -193,7 +190,7 @@ public class BuildTasksInitializer {
                         buildSetTask.getStartTime(),
                         productMilestone,
                         buildContentId);
-                log.debug("Created new buildTask {} for BuildConfigurationAudited {}.", buildTask, buildConfigAudited);
+                log.debug("Created new buildTask {} for BuildConfiguration {}.", buildTask, buildConfig);
             }
 
             buildSetTask.addBuildTask(buildTask);
